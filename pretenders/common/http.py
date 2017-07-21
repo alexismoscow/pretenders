@@ -3,6 +3,7 @@ import json
 import re
 import sys
 from pretenders.common.exceptions import NoRequestFound
+from pretenders.common.constants import REGEX
 
 
 def to_dict(wsgi_headers, include=lambda _: True):
@@ -22,6 +23,7 @@ class RequestSerialiser(object):
 
     It is used to serialise requests as JSON data.
     """
+
     def __init__(self, path, request):
         if request.query_string:
             path = "{0}?{1}".format(path, request.query_string)
@@ -31,6 +33,7 @@ class RequestSerialiser(object):
         self.method = request.method
         self.url = path
         self.rule = "{0} {1}".format(request.method, path)
+        self.body_rule = request.body_rule
 
     def serialize(self):
         data = {
@@ -39,8 +42,10 @@ class RequestSerialiser(object):
             'method': self.method,
             'url': self.url,
             'rule': self.rule,
+            'body_rule': self.body_rule,
         }
         return json.dumps(data)
+
 
 def binary_to_ascii(data):
     python3 = sys.version_info.major >= 3
@@ -52,6 +57,7 @@ def binary_to_ascii(data):
 
     output_bytes = base64.b64encode(input_bytes)
     return output_bytes.decode('ascii') if python3 else output_bytes
+
 
 def ascii_to_binary(data):
     return base64.b64decode(data.encode('ascii'))
@@ -79,6 +85,7 @@ class JsonHelper(object):
         Additional keyword arguments will complement or override the
         values in ``json_data``. Normally you will use one or the other.
     """
+
     def __init__(self, json_data=None, data=None, **kwargs):
         self.data = {}
         if json_data is not None:
@@ -155,12 +162,13 @@ class MatchRule(object):
     A matching rule against which incoming requests will be compared.
     """
 
-    def __init__(self, rule, headers=None, body=None):
+    def __init__(self, rule, headers=None, body=None, body_rule=REGEX):
         """
         :param rule: String incorporating the method and url to be matched
             eg "GET url/to/match"
         :param headers: Dictionary of headers to match.
-        :param headers: Body to match (string using regex syntax).
+        :param body: Body to match (string using matching strategy).
+        :param body_rule: Body matching strategy.
         """
         self.rule = rule
         if headers:
@@ -175,6 +183,7 @@ class MatchRule(object):
             'rule': self.rule,
             'headers': self.headers,
             'body': self.body,
+            'body_rule': self.body_rule,
         }
 
     def __key(self):
@@ -198,7 +207,7 @@ class MatchRule(object):
                 and ('headers' not in request
                      or self.headers_match(request['headers']))
                 and ('body' not in request
-                     or self.body_match(request['body'])))
+                     or self.body_match(request['body'], request['body_rule'])))
 
     def rule_matches(self, rule):
         """
@@ -231,11 +240,12 @@ class MatchRule(object):
                         return False
         return True
 
-    def body_match(self, body):
+    def body_match(self, body, body_rule):
         """
         Check if a provided request matches the regex in the body attribute
-        :param body:  A string in regex syntax that will be matched against the
+        :param body:  A string in regex syntax or a json literal that will be matched against the
             request body.
+        :param body_rule:  Body matching strategy (REGEX or JSON_CONTAINS).
         :return: True if the request body matches and False if not.
         """
         if self.body:

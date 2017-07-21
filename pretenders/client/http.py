@@ -4,6 +4,7 @@ import json
 from pretenders.client import BossClient
 from pretenders.common.http import MatchRule, JsonHelper
 from pretenders.common.exceptions import NoRequestFound
+from pretenders.common.constants import REGEX
 
 
 class HTTPMock(BossClient):
@@ -66,12 +67,13 @@ class HTTPMock(BossClient):
             full_host, self.pretend_access_path
         )
 
-    def when(self, rule='', headers=None, body=None):
+    def when(self, rule='', headers=None, body=None, body_rule=REGEX):
         """
         Set the match rule which is the first part of the Preset.
 
         :param rule: String incorporating the method and url to match
             eg "GET url/to/match"
+        :param body_rule: Body matching strategy (REGEX or JSON_CONTAINS)
         :param headers: An optional dictionary of headers to match.
 
         .. note::

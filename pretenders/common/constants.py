@@ -5,3 +5,5 @@ FOREVER = 'FOREVER'
 """Keyword used to define ``forever``.
 Used when specifying how many times a response should be used.
 """
+REGEX = 'REGEX'
+JSON_CONTAINS = 'JSON_CONTAINS'

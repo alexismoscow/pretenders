@@ -3,7 +3,7 @@ import socket
 from nose.tools import assert_equals, assert_true, assert_raises
 import requests
 
-from pretenders.common.constants import FOREVER
+from pretenders.common.constants import FOREVER, JSON_CONTAINS
 from pretenders.common.exceptions import ConfigurationError
 from pretenders.client.http import HTTPMock
 from . import get_fake_client
@@ -309,7 +309,7 @@ def test_header_matching_with_match_headers():
     http_mock.when('GET /test-headers').reply(b'', status=400)
 
     response, data = fake_client.get(url='/test-headers',
-                               headers={'Another-Header': 'A'})
+                                     headers={'Another-Header': 'A'})
 
     assert_equals(response.status, 200)
 
@@ -331,12 +331,12 @@ def test_etag_workflow():
     # Requests using the Etag header from above in the If-None-Match header
     # receive a 304 Not Modified response
     response, data = fake_client.get(url='/test-etag',
-                               headers={'If-None-Match': 'A12345'})
+                                     headers={'If-None-Match': 'A12345'})
     assert_equals(response.status, 304)
 
     # ... and will continue to receive 304 responses.
     response, data = fake_client.get(url='/test-etag',
-                               headers={'If-None-Match': 'A12345'})
+                                     headers={'If-None-Match': 'A12345'})
     assert_equals(response.status, 304)
 
 
@@ -382,6 +382,19 @@ def test_reply_depending_on_body():
     assert_equals(data, b'Second')
 
     response, data = fake_client.post(url='/hello', body=u'345')
+    assert_equals(response.status, 404)
+
+
+def test_reply_depending_on_json_body():
+    http_mock.reset()
+    http_mock.when('POST /hello', body=u'{"key2": "val2"}',
+                   body_rule=JSON_CONTAINS).reply(b'json', times=FOREVER)
+
+    response, data = fake_client.post(
+        url='/hello', body=u'{"key1":"val1", "key2": "val2"}')
+    assert_equals(data, b'json')
+
+    response, data = fake_client.post(url='/hello', body=u'{"key1":"val1"}')
     assert_equals(response.status, 404)
 
 
